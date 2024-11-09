@@ -57,11 +57,12 @@ class Dataset(torch.utils.data.Dataset):
         self.k = k
         self.num_classes = num_classes
         self.T = T
+        self.k_map = {'10': 0, '20': 1, '30': 2, '50': 3, '100': 4}
 
         x = prepare_x(data)
         y = get_label(data)
         x, y = data_classification(x, y, self.T)
-        y = y[:, self.k] - 1
+        y = y[:, self.k_map[str(self.k)]] - 1
         self.length = len(x)
 
         x = torch.from_numpy(x)
