@@ -14,8 +14,12 @@ import time
 
 
 # A function to encapsulate the training loop
-def batch_gd(model, criterion, optimizer, train_loader, test_loader, k, epochs=200):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
+    epochs = config['epochs']
+    device = config['device']
+    k = config['k']
+    early_stopping = EarlyStopping(config)
+
     train_losses = np.zeros(epochs)
     test_losses = np.zeros(epochs)
     best_test_loss = np.inf
@@ -65,7 +69,12 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, k, epochs=2
             best_model_state = model.state_dict()
             best_test_loss = test_loss
             best_test_epoch = it
-            print('model saved')
+            print('best model updated')
+
+        early_stopping(best_test_loss, test_loss)
+        if early_stopping.early_stop:
+            print("Early stopping at epoch:", it + 1)
+            break
 
         dt = datetime.now() - t0
         print(f'Epoch {it + 1}/{epochs}, Train Loss: {train_loss:.4f}, \
@@ -84,8 +93,8 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, k, epochs=2
     return model, train_losses, test_losses
 
 
-def evaluate(model, test_loader):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def evaluate(model, test_loader, config):
+    device = config['device']
     all_targets = []
     all_predictions = []
 
@@ -108,3 +117,19 @@ def evaluate(model, test_loader):
     report = classification_report(all_targets, all_predictions, digits=4)
     print(report)
     return report
+
+
+class EarlyStopping:
+    def __init__(self, config):
+        self.tolerance = config['patience']
+        self.min_delta = config['min_delta']
+        self.counter = 0
+        self.early_stop = False
+
+    def __call__(self, best_loss, epoch_val_loss):
+        if epoch_val_loss <= (best_loss + self.min_delta):
+            self.counter = 0
+        elif epoch_val_loss > (best_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.tolerance:
+                self.early_stop = True
