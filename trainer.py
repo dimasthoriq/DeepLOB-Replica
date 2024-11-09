@@ -7,7 +7,6 @@ Source: https://github.com/zcakhaa/DeepLOB-Deep-Convolutional-Neural-Networks-fo
 import torch
 import numpy as np
 from datetime import datetime
-from tqdm import tqdm
 from sklearn.metrics import classification_report
 import os
 import time
@@ -22,48 +21,74 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
 
     train_losses = np.zeros(epochs)
     test_losses = np.zeros(epochs)
+    train_accuracies = np.zeros(epochs)
+    test_accuracies = np.zeros(epochs)
+
     best_test_loss = np.inf
     best_test_epoch = 0
     best_model_state = model.state_dict()
     time_start = time.time()
 
-    for it in tqdm(range(epochs)):
-
+    for it in range(epochs):
         model.train()
         t0 = datetime.now()
+
         train_loss = []
+        train_correct = 0
+        train_total = 0
+
         for inputs, targets in train_loader:
-            # move data to GPU
             inputs, targets = inputs.to(device, dtype=torch.float), targets.to(device, dtype=torch.int64)
-            # print("inputs.shape:", inputs.shape)
-            # zero the parameter gradients
             optimizer.zero_grad()
-            # Forward pass
-            # print("about to get model output")
+
             outputs = model(inputs)
-            # print("done getting model output")
-            # print("outputs.shape:", outputs.shape, "targets.shape:", targets.shape)
             loss = criterion(outputs, targets)
-            # Backward and optimize
-            # print("about to optimize")
+
             loss.backward()
             optimizer.step()
             train_loss.append(loss.item())
+
+            _, predicted = torch.max(outputs, 1)
+            train_total += targets.size(0)
+            train_correct += (predicted == targets).sum().item()
+
         # Get train loss and test loss
-        train_loss = np.mean(train_loss)  # a little misleading
+        train_loss = np.mean(train_loss)
+        train_acc = train_correct / train_total
 
         model.eval()
         test_loss = []
+        test_correct = 0
+        test_total = 0
+
         for inputs, targets in test_loader:
             inputs, targets = inputs.to(device, dtype=torch.float), targets.to(device, dtype=torch.int64)
             outputs = model(inputs)
+
             loss = criterion(outputs, targets)
             test_loss.append(loss.item())
+
+            _, predicted = torch.max(outputs, 1)
+            test_total += targets.size(0)
+            test_correct += (predicted == targets).sum().item()
+
         test_loss = np.mean(test_loss)
+        test_acc = test_correct / test_total
 
         # Save losses
         train_losses[it] = train_loss
         test_losses[it] = test_loss
+        train_accuracies[it] = train_acc
+        test_accuracies[it] = test_acc
+
+        dt = datetime.now() - t0
+
+        if (it + 1) % config['print_freq'] == 0:
+            print(f'Epoch {it + 1}/{epochs}, Train Loss: {train_loss:.4f}, \
+                      Validation Loss: {test_loss:.4f}, \
+                      Train Accuracy: {train_acc:.4f}, \
+                      Validation Accuracy: {test_acc:.4f}, \
+                      Duration: {dt}, Best Val Epoch: {best_test_epoch}')
 
         if test_loss < best_test_loss:
             best_model_state = model.state_dict()
@@ -76,10 +101,6 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
             print("Early stopping at epoch:", it + 1)
             break
 
-        dt = datetime.now() - t0
-        print(f'Epoch {it + 1}/{epochs}, Train Loss: {train_loss:.4f}, \
-          Validation Loss: {test_loss:.4f}, Duration: {dt}, Best Val Epoch: {best_test_epoch}')
-
     model.load_state_dict(best_model_state)
     exp_path = './Experiments/'
     if not os.path.exists(exp_path):
@@ -90,7 +111,7 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
     duration = time.time() - time_start
     print('Training completed in {:.0f}m {:.0f}s'.format(duration // 60, duration % 60))
 
-    return model, train_losses, test_losses
+    return model, train_losses, test_losses, train_accuracies, test_accuracies
 
 
 def evaluate(model, test_loader, config):
