@@ -116,7 +116,7 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
     duration = time.time() - time_start
     print('Training completed in {:.0f}m {:.0f}s'.format(duration // 60, duration % 60))
 
-    return model, train_losses, test_losses, train_accuracies, test_accuracies
+    return model, train_losses[:it], test_losses[:it], train_accuracies[:it], test_accuracies[:it]
 
 
 def evaluate(model, test_loader, config):

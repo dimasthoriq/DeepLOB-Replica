@@ -1,4 +1,5 @@
 import torch
+import gc
 import matplotlib.pyplot as plt
 from utils import Dataset, load_data
 from trainer import batch_gd, evaluate
@@ -23,11 +24,12 @@ config = {
 }
 print(config['device'])
 
+# Load the data
+train, val, test = load_data(config['data_path'])
+
 for k in [10, 20, 50]:
     print(f'Training for the model with k={k}')
     config['k'] = k
-    # Load the data
-    train, val, test = load_data(config['data_path'])
 
     dataset_train = Dataset(data=train, k=config['k'], num_classes=config['num_classes'], T=config['T'])
     dataset_val = Dataset(data=val, k=config['k'], num_classes=config['num_classes'], T=config['T'])
@@ -67,3 +69,8 @@ for k in [10, 20, 50]:
     plt.title('Accuracy curves')
     plt.tight_layout()
     plt.savefig(f'./Experiments/k_{k}_loss_acc.png')
+
+    # Clear the memory
+    del model, criterion, optimizer, dataset_train, dataset_val, dataset_test, train_loader, val_loader, test_loader
+    gc.collect()
+    torch.cuda.empty_cache()
