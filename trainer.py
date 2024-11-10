@@ -83,7 +83,7 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
 
         dt = datetime.now() - t0
 
-        if (it + 1) % config['print_freq'] == 0:
+        if (it + 1) % config['print_freq'] == 0 or it == 0:
             print(f'Epoch {it + 1}/{epochs}, Train Loss: {train_loss:.4f}, \
                       Validation Loss: {test_loss:.4f}, \
                       Train Accuracy: {train_acc:.4f}, \
@@ -99,6 +99,11 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
         early_stopping(best_test_loss, test_loss)
         if early_stopping.early_stop:
             print("Early stopping at epoch:", it + 1)
+            print(f'Epoch {it + 1}/{epochs}, Train Loss: {train_loss:.4f}, \
+                      Validation Loss: {test_loss:.4f}, \
+                      Train Accuracy: {train_acc:.4f}, \
+                      Validation Accuracy: {test_acc:.4f}, \
+                      Duration: {dt}, Best Val Epoch: {best_test_epoch}')
             break
 
     model.load_state_dict(best_model_state)
@@ -106,7 +111,7 @@ def batch_gd(model, criterion, optimizer, train_loader, test_loader, config):
     if not os.path.exists(exp_path):
         os.makedirs(exp_path)
     time_stamp = datetime.today().strftime('%Y%m%d_%H%M')
-    model_save_path = os.path.join(exp_path, 'model' + '_K' + k + '_' + time_stamp + '.pth')
+    model_save_path = os.path.join(exp_path, 'model' + '_K' + str(k) + '_' + time_stamp + '.pth')
     torch.save(model, model_save_path)
     duration = time.time() - time_start
     print('Training completed in {:.0f}m {:.0f}s'.format(duration // 60, duration % 60))

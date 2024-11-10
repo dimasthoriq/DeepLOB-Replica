@@ -15,7 +15,7 @@ config = {
     # Training configs
     'lr': 0.01,
     'eps': 1.0,
-    'epochs': 150,
+    'epochs': 100,
     'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
     'patience': 20,
     'min_delta': 1e-6,
